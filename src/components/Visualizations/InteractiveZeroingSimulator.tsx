@@ -9,24 +9,14 @@ export default function InteractiveZeroingSimulator({ weapon }: { weapon: Weapon
 
   // Manual logic based on weapon
   let distance = 100;
-  let clickValue = 1; // cm/inches per click depending on manual
-  let clickUnit = 'cm';
-  let targetType = 'Standard';
   let elevationAction = 'Rear Sight';
-  let windageAction = 'Rear Sight';
 
   if (weapon.shortName === 'G3A3') {
     distance = 25; // MPI at 25m
-    clickValue = 3.3; // 1 click = 3.3cm at 100m. At 25m it's 0.825cm! (Or based on SAC-81 exact data)
-    clickUnit = 'cm';
-    targetType = '25m Zeroing Target';
   } else if (weapon.shortName === 'MP5A2') {
     distance = 25;
-    clickValue = 1.5;
-    clickUnit = 'cm';
   } else if (weapon.shortName === 'MG1A3') {
     distance = 100;
-    clickValue = 1; // 1 click = 1 inch? Or depends on manual. Let's use 1 click = 1 grid.
   }
 
   const handleTargetClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -96,24 +86,24 @@ export default function InteractiveZeroingSimulator({ weapon }: { weapon: Weapon
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
                 <div style={{ padding: 'var(--space-md)', background: 'rgba(241, 245, 249, 0.8)', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Elevation</div>
-                  <div style={{ fontSize: '1.2rem', fontFamily: 'var(--font-mono)', color: impactY > 0 ? 'var(--accent-green)' : 'var(--accent-amber)' }}>
-                    {Math.max(1, Math.round(Math.abs(impactY) / 15))} clicks <br/>
-                    <span style={{ fontSize: '0.8rem' }}>{impactY > 0 ? 'UP' : 'DOWN'}</span>
+                  <div style={{ fontSize: '1.2rem', fontFamily: 'var(--font-mono)', color: impactY! > 0 ? 'var(--accent-green)' : 'var(--accent-amber)' }}>
+                    {Math.max(1, Math.round(Math.abs(impactY!) / 15))} clicks <br/>
+                    <span style={{ fontSize: '0.8rem' }}>{impactY! > 0 ? 'UP' : 'DOWN'}</span>
                   </div>
                 </div>
 
                 <div style={{ padding: 'var(--space-md)', background: 'rgba(241, 245, 249, 0.8)', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Windage</div>
-                  <div style={{ fontSize: '1.2rem', fontFamily: 'var(--font-mono)', color: impactX < 0 ? 'var(--accent-green)' : 'var(--accent-amber)' }}>
-                    {Math.max(1, Math.round(Math.abs(impactX) / 15))} clicks <br/>
-                    <span style={{ fontSize: '0.8rem' }}>{impactX < 0 ? 'RIGHT' : 'LEFT'}</span>
+                  <div style={{ fontSize: '1.2rem', fontFamily: 'var(--font-mono)', color: impactX! < 0 ? 'var(--accent-green)' : 'var(--accent-amber)' }}>
+                    {Math.max(1, Math.round(Math.abs(impactX!) / 15))} clicks <br/>
+                    <span style={{ fontSize: '0.8rem' }}>{impactX! < 0 ? 'RIGHT' : 'LEFT'}</span>
                   </div>
                 </div>
               </div>
 
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, padding: 'var(--space-sm)', background: 'var(--accent-green-bg)', borderLeft: '3px solid var(--accent-green)' }}>
                 <strong>Manual Formula:</strong> {weapon.zeroing.definition.slice(0, 100)}...<br/><br/>
-                For the {weapon.shortName}, moving the MPI {impactY > 0 ? 'up' : 'down'} requires turning the {elevationAction} {impactY > 0 ? 'clockwise' : 'counter-clockwise'}.
+                For the {weapon.shortName}, moving the MPI {impactY! > 0 ? 'up' : 'down'} requires turning the {elevationAction} {impactY! > 0 ? 'clockwise' : 'counter-clockwise'}.
               </div>
             </div>
           )}

@@ -311,7 +311,9 @@ export default function QuizEngine() {
               
               {answers[currentIndex] !== 'correct' && (
                 <div style={{ marginBottom: '12px', fontSize: '1rem' }}>
-                  The correct answer is: <strong style={{ color: 'var(--text-primary)' }}>{Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer.toString()}</strong>
+                  The correct answer is: <strong style={{ color: 'var(--text-primary)' }}>
+                    {q.correctAnswer ? (Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer.toString()) : (q.type === 'true-false' ? (q.isTrue ? 'True' : 'False') : (q.correctOrder ? q.correctOrder.join(' → ') : 'N/A'))}
+                  </strong>
                 </div>
               )}
               

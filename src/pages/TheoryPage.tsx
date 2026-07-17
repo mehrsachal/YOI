@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import InteractiveTrajectory from '../components/Visualizations/InteractiveTrajectory';
 import InteractiveOpMech from '../components/Visualizations/InteractiveOpMech';
 import InteractiveBeatenZone from '../components/Visualizations/InteractiveBeatenZone';
-import InteractiveRiflingTwist from '../components/Visualizations/InteractiveRiflingTwist';
+
 import InteractiveNvdSimulator from '../components/Visualizations/InteractiveNvdSimulator';
 
 const DEFINITIONS = [

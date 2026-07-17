@@ -82,7 +82,7 @@ const GLOW_MAP: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const { progress, getOverallPercent } = useProgress();
+  const { getOverallPercent } = useProgress();
   const overallPercent = getOverallPercent();
 
   return (

@@ -588,7 +588,7 @@ function PartsTab({ weapon, expandedPart, setExpandedPart }: {
   );
 }
 
-function StoppagesTab({ weapon, accent }: { weapon: WeaponData; accent: string }) {
+function StoppagesTab({ weapon }: { weapon: WeaponData; accent: string }) {
   return (
     <div className="content-section">
       <h2 className="section-title">

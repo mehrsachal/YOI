@@ -106,7 +106,9 @@ export default function Flashcards() {
                 overflowY: 'auto'
               }}>
                 <h2 style={{ fontSize: 'clamp(1.2rem, 6vw, 2rem)', color: 'var(--accent-green)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                  {Array.isArray(currentQuestion.correctAnswer) ? currentQuestion.correctAnswer.join(', ') : currentQuestion.correctAnswer.toString()}
+                  {currentQuestion.correctAnswer 
+                    ? (Array.isArray(currentQuestion.correctAnswer) ? currentQuestion.correctAnswer.join(', ') : currentQuestion.correctAnswer.toString())
+                    : (currentQuestion.type === 'true-false' ? (currentQuestion.isTrue ? 'True' : 'False') : (currentQuestion.correctOrder ? currentQuestion.correctOrder.join(' → ') : 'N/A'))}
                 </h2>
                 {currentQuestion.explanation && (
                   <p style={{ marginTop: 'var(--space-lg)', color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.95rem' }}>

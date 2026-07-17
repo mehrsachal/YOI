@@ -77,7 +77,7 @@ export interface QuizQuestion {
   question: string;
   // For MCQ
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswer?: string | string[];
   // For fill-blank
   blankWord?: string;
   // For match-pairs

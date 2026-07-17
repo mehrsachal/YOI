@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function InteractiveTrajectory() {
   const [distance, setDistance] = useState(500); // 100 to 1000m
   const [wind, setWind] = useState(0); // -10 to +10 m/s
-  const [gravity, setGravity] = useState(9.8); // standard
+  const [gravity] = useState(9.8); // standard
   
   // Simulated physics based on the inputs
   const maxOrdinate = (distance / 1000) * (distance / 1000) * gravity * 12; // Exaggerated for visual effect
