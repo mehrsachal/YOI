@@ -1,6 +1,8 @@
 import type { QuizQuestion } from '../types';
+import { autoQuizQuestions } from './autoQuizData';
 
 export const allQuizQuestions: QuizQuestion[] = [
+  ...autoQuizQuestions,
   // ── THEORY ──
   { id: 'T01', type: 'fill-blank', category: 'theory', difficulty: 'soldier', question: 'The inner/interior portion of the barrel is called the _____.', correctAnswer: 'bore', hint: 'Not the chamber', source: 'P5' },
   { id: 'T02', type: 'mcq', category: 'theory', difficulty: 'recruit', question: 'What is the standard diameter of the bore excluding depth of rifling grooves?', options: ['Bore', 'Caliber', 'Twist', 'Rifling'], correctAnswer: 'Caliber', source: 'P5' },
@@ -133,6 +135,7 @@ export const allQuizQuestions: QuizQuestion[] = [
 ];
 
 export const QUIZ_CATEGORIES = [
+  { id: 'sadist_mode', name: 'Sadist Mode (ALL Data)', icon: '💀', description: 'Generated verbatim from every single line of the manual. Godspeed.' },
   { id: 'theory', name: 'Theory of SAs', icon: '◎', description: 'Definitions, ballistics, and core concepts' },
   { id: 'g3a3', name: 'G3A3 Rifle', icon: '▸', description: 'Specs, cycle of operation, stoppages, zeroing' },
   { id: 'mp5a2', name: 'MP5A2', icon: '▸', description: 'Specs, stoppages, CQB parameters' },

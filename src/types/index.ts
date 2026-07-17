@@ -67,7 +67,7 @@ export interface BallisticsType {
 
 // Quiz types
 export type QuestionType = 'mcq' | 'fill-blank' | 'true-false' | 'match-pairs' | 'order-steps';
-export type DifficultyLevel = 'recruit' | 'soldier' | 'marksman';
+export type DifficultyLevel = 'recruit' | 'soldier' | 'marksman' | 'sadist';
 
 export interface QuizQuestion {
   id: string;
