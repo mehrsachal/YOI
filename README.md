@@ -1,32 +1,34 @@
-# React + TypeScript + Vite
+# P-Quest
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Offline tactical map for Android (working name in the brief: SAATHI). Requirements: [docs/REQUIREMENTS.pdf](docs/REQUIREMENTS.pdf).
+Built phase by phase; the current state and test results are in [docs/PHASE1_REPORT.md](docs/PHASE1_REPORT.md).
 
-Currently, two official plugins are available:
+## Build
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Needs JDK 17+ and the Android SDK (platform 35, build-tools 35).
 
-## React Compiler
+    ./gradlew :coords:test :map:testDebugUnitTest :app:assembleDebug
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The APK is written to `app/build/outputs/apk/debug/`. Every push also builds it in GitHub Actions (artifact `p-quest-debug-apk`).
 
-## Expanding the Oxlint configuration
+## Modules
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+| Module | Contents |
+| --- | --- |
+| `coords` | Pure Kotlin: UTM, MGRS, lat/long parsing and formatting, geodesic distance and bearing, date-time group |
+| `security` | Android Keystore-wrapped key and SQLCipher database |
+| `map` | Tile storage (MBTiles, GeoPackage), the offline tile gateway, area download, elevation, track store, map style |
+| `app` | The single map screen, bottom sheets, MGRS grid overlay, track recording service, English and Urdu strings |
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+Later phases add `symbology`, `cot`, `missions`, `messaging`, `mesh` and `tour`.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Network behaviour
+
+The map engine can only talk to an in-app gateway (`map/.../MapHub.kt`). The gateway answers from local storage and
+contacts a server only when online maps are switched on in Settings and an `https://` tile URL has been entered.
+Out of the box the app makes no network requests.
+
+## Tools
+
+- `tools/make_demo_pack.py` builds the bundled demo map: a fictional island in open ocean, so no real terrain is shipped.
+- `tools/gen_coord_vectors.py` regenerates the coordinate test vectors from independent libraries (`mgrs`, `pyproj`).
