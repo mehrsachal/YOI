@@ -4,4 +4,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "P-Quest"
-include(":app", ":coords", ":map", ":security")
+include(":app", ":coords", ":cot", ":missions", ":mesh", ":symbology", ":map", ":security")
