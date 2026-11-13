@@ -38,9 +38,15 @@ object UtmMath {
     private const val K0 = 0.9996
     private val n = F / (2 - F)
     private val aa = A / (1 + n) * (1 + n * n / 4 + n.pow(4) / 64)
-    private val al = doubleArrayOf(n / 2 - 2 * n * n / 3 + 5 * n.pow(3) / 16, 13 * n * n / 48 - 3 * n.pow(3) / 5, 61 * n.pow(3) / 240)
-    private val be = doubleArrayOf(n / 2 - 2 * n * n / 3 + 37 * n.pow(3) / 96, n * n / 48 + n.pow(3) / 15, 17 * n.pow(3) / 480)
-    private val de = doubleArrayOf(2 * n - 2 * n * n / 3 - 2 * n.pow(3), 7 * n * n / 3 - 8 * n.pow(3) / 5, 56 * n.pow(3) / 15)
+    private val n2 = n * n
+    private val n3 = n2 * n
+    private val n4 = n3 * n
+    private val al = doubleArrayOf(n / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180, 13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440,
+        61 * n3 / 240 - 103 * n4 / 140, 49561 * n4 / 161280)
+    private val be = doubleArrayOf(n / 2 - 2 * n2 / 3 + 37 * n3 / 96 - n4 / 360, n2 / 48 + n3 / 15 - 437 * n4 / 1440,
+        17 * n3 / 480 - 37 * n4 / 840, 4397 * n4 / 161280)
+    private val de = doubleArrayOf(2 * n - 2 * n2 / 3 - 2 * n3 + 116 * n4 / 45, 7 * n2 / 3 - 8 * n3 / 5 - 227 * n4 / 45,
+        56 * n3 / 15 - 136 * n4 / 35, 4279 * n4 / 630)
 
     /** Returns easting and northing; northing is negative south of the equator (no false northing). */
     fun forward(zone: Int, lat: Double, lon: Double): Pair<Double, Double> {
@@ -53,7 +59,7 @@ object UtmMath {
         val eta = atanh(sin(dl) / sqrt(1 + t * t))
         var e = eta
         var nn = xi
-        for (j in 1..3) {
+        for (j in 1..4) {
             e += al[j - 1] * cos(2 * j * xi) * sinh(2 * j * eta)
             nn += al[j - 1] * sin(2 * j * xi) * cosh(2 * j * eta)
         }
@@ -66,13 +72,13 @@ object UtmMath {
         val eta = (easting - 500000) / (K0 * aa)
         var xi1 = xi
         var eta1 = eta
-        for (j in 1..3) {
+        for (j in 1..4) {
             xi1 -= be[j - 1] * sin(2 * j * xi) * cosh(2 * j * eta)
             eta1 -= be[j - 1] * cos(2 * j * xi) * sinh(2 * j * eta)
         }
         val chi = asin(sin(xi1) / cosh(eta1))
         var phi = chi
-        for (j in 1..3) phi += de[j - 1] * sin(2 * j * chi)
+        for (j in 1..4) phi += de[j - 1] * sin(2 * j * chi)
         val lon = Utm.centralMeridian(zone) + Math.toDegrees(atan2(sinh(eta1), cos(xi1)))
         return LatLon(Math.toDegrees(phi), lon)
     }
@@ -199,7 +205,7 @@ enum class CoordFormat { MGRS, UTM, DD, DMS }
 
 object CoordText {
     fun format(p: LatLon, f: CoordFormat): String = when (f) {
-        CoordFormat.MGRS -> Mgrs.format(java.util.Locale.ROOT, p)
+        CoordFormat.MGRS -> Mgrs.format(p)
         CoordFormat.UTM -> if (p.lat < -80 || p.lat > 84) "—" else Utm.from(p).let {
             "%02d%c %06d %07d".format(java.util.Locale.ROOT, it.zone, Mgrs.band(p.lat), floor(it.easting).toLong(), floor(it.northing).toLong())
         }

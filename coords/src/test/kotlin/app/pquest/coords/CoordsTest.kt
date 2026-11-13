@@ -8,8 +8,8 @@ class CoordsTest {
 
     @Test fun utmForwardMatchesPyproj() = rows.forEach { r ->
         val u = Utm.from(LatLon(r[0].toDouble(), r[1].toDouble()), r[3].toInt())
-        assertEquals(r[4].toDouble(), u.easting, 0.002, r[2])
-        assertEquals(r[5].toDouble(), u.northing, 0.002, r[2])
+        assertEquals(r[4].toDouble(), u.easting, 0.001, r[2])
+        assertEquals(r[5].toDouble(), u.northing, 0.001, r[2])
     }
 
     @Test fun utmRoundTripsBelowOneMillimetre() = rows.forEach { r ->

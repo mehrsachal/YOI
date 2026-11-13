@@ -9,7 +9,7 @@ class MapLogicTest {
     @Test fun tileIndices() {
         assertEquals(0, TileMath.x(-180.0, 5)); assertEquals(31, TileMath.x(179.999, 5))
         // Known tile: z10 over Islamabad-area longitude/latitude (OSM slippy-map convention).
-        assertEquals(719, TileMath.x(73.0479, 10)); assertEquals(408, TileMath.y(33.6844, 10))
+        assertEquals(719, TileMath.x(73.0479, 10)); assertEquals(410, TileMath.y(33.6844, 10))
         assertEquals(0, TileMath.y(89.0, 3)); assertEquals(7, TileMath.y(-89.0, 3))
     }
 
