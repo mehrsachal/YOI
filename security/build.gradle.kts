@@ -7,6 +7,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
+    testImplementation(kotlin("test"))
     api("net.zetetic:sqlcipher-android:4.6.1")
     api("androidx.sqlite:sqlite:2.4.0")
 }

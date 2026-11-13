@@ -71,16 +71,55 @@ class MapHub(private val ctx: Context) {
     // ---- tile access -------------------------------------------------------------------------------------
 
     fun local(id: String, z: Int, x: Int, y: Int): ByteArray? {
+        if (id == "slope" || id == "contour") return derived(id, z, x, y)
         stores[id]?.get(z, x, y)?.let { return it }
         if (id == "dem") return packs.value.firstNotNullOfOrNull { p -> if (p.dem) open[p.id]?.get(z, x, y) else null }
         return open[id]?.get(z, x, y)
     }
 
-    fun canFetch(id: String) = onlineEnabled && templates[id]?.startsWith("https://") == true
+    /** Tour only: "downloads" come from the bundled demo map, so the step works with no network. */
+    @Volatile var demoDownload = false
+    private fun demoTopo() = packs.value.firstOrNull { !it.dem && it.name.startsWith("Demo island") }?.let { open[it.id] }
+
+    fun canFetch(id: String) = (demoDownload && id == "topo") || (onlineEnabled && templates[id]?.startsWith("https://") == true)
+
+    /** Slope shading and contour lines are drawn on the fly from the offline elevation tiles. */
+    private fun derived(id: String, z: Int, x: Int, y: Int): ByteArray? {
+        val bmp = demTile(z, x, y) ?: return null
+        val w = bmp.width; val h = bmp.height
+        val px = IntArray(w * h); bmp.getPixels(px, 0, w, 0, 0, w, h)
+        val e = FloatArray(w * h) { TileMath.terrarium(px[it]).toFloat() }
+        val out = IntArray(w * h)
+        if (id == "slope") {
+            val lat = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 0.5) / (1 shl z)))))
+            val res = (156543.03392 * Math.cos(Math.toRadians(lat)) / (1 shl z) * 256.0 / w).toFloat()
+            for (yy in 0 until h) for (xx in 0 until w) {
+                val l = e[yy * w + maxOf(xx - 1, 0)]; val r = e[yy * w + minOf(xx + 1, w - 1)]
+                val u = e[maxOf(yy - 1, 0) * w + xx]; val d = e[minOf(yy + 1, h - 1) * w + xx]
+                val deg = Math.toDegrees(Math.atan(Math.hypot(((r - l) / (2 * res)).toDouble(), ((d - u) / (2 * res)).toDouble())))
+                out[yy * w + xx] = when { deg < 15 -> 0; deg < 25 -> 0x66FFE000; deg < 35 -> 0x80FF9000.toInt(); deg < 45 -> 0x99FF3000.toInt(); else -> 0xAAB00060.toInt() }
+            }
+        } else {
+            val step = when { z >= 14 -> 20; z >= 12 -> 50; z >= 10 -> 100; else -> 250 }
+            for (yy in 0 until h - 1) for (xx in 0 until w - 1) {
+                val a = e[yy * w + xx]; val b = e[yy * w + xx + 1]; val c = e[(yy + 1) * w + xx]
+                if (a <= 0 && b <= 0 && c <= 0) continue
+                fun lv(v: Float, s: Int) = Math.floor((v / s).toDouble()).toInt()
+                if (lv(a, step * 5) != lv(b, step * 5) || lv(a, step * 5) != lv(c, step * 5)) out[yy * w + xx] = 0xE65A3214.toInt()
+                else if (lv(a, step) != lv(b, step) || lv(a, step) != lv(c, step)) out[yy * w + xx] = 0x99855A32.toInt()
+            }
+        }
+        return png(Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888), true)
+    }
+
+    private fun png(b: Bitmap, alpha: Boolean): ByteArray = java.io.ByteArrayOutputStream().also {
+        b.compress(if (alpha) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, 85, it)
+    }.toByteArray()
 
     /** Fetches one tile from the admin-configured source and stores it. Returns null when offline or not allowed. */
     fun fetch(id: String, z: Int, x: Int, y: Int): ByteArray? {
         if (!canFetch(id)) return null
+        if (demoDownload && id == "topo") return demoTopo()?.get(z, x, y)?.also { stores.getValue(id).put(z, x, y, it) }
         val url = templates.getValue(id).replace("{z}", "$z").replace("{x}", "$x").replace("{y}", "$y").replace("{s}", "a")
         return try {
             upstream.newCall(Request.Builder().url(url).header("User-Agent", "P-Quest").build()).execute().use { r ->
@@ -111,11 +150,17 @@ class MapHub(private val ctx: Context) {
 
     /** Copies a pack into private storage and registers it. Throws IllegalArgumentException if unsupported. */
     @Synchronized
-    fun importPack(input: InputStream, displayName: String): Pack {
+    fun importPack(input: InputStream, displayName: String, onProgress: (Float) -> Unit = {}): Pack {
         val id = UUID.randomUUID().toString().take(8)
-        val f = File(packDir, "$id.db")
+        var f = File(packDir, "$id.db")
         f.outputStream().use { input.copyTo(it, 1 shl 16) }
         try {
+            val magic = ByteArray(4).also { m -> f.inputStream().use { it.read(m) } }
+            if ((magic[0] == 'I'.code.toByte() && magic[1] == 'I'.code.toByte()) || (magic[0] == 'M'.code.toByte() && magic[1] == 'M'.code.toByte())) {
+                val tiles = File(packDir, "$id.mbtiles")
+                try { tileGeoTiff(f, tiles, displayName.substringBeforeLast('.'), onProgress) } finally { f.delete() }
+                f = tiles
+            }
             val isGpkg = runCatching { Gpkg(f).close() }.isSuccess
             val src = openSource(f, isGpkg)
             val mb = src as? MbTiles
@@ -134,6 +179,31 @@ class MapHub(private val ctx: Context) {
         } catch (e: Exception) {
             f.delete()
             throw IllegalArgumentException(e.message ?: "unsupported file", e)
+        }
+    }
+
+    /** Cuts a georeferenced TIFF into web-mercator tiles, from its native zoom down six levels. */
+    private fun tileGeoTiff(src: File, dst: File, name: String, onProgress: (Float) -> Unit) {
+        GeoTiff(src).use { tif ->
+            val b = tif.bounds
+            var zMax = tif.nativeZoom.coerceAtMost(17)
+            while (zMax > 4 && TileMath.count(b, maxOf(zMax - 6, 0), zMax) > 40_000) zMax--
+            val zMin = maxOf(zMax - 6, 0)
+            val total = TileMath.count(b, zMin, zMax).toFloat()
+            val out = MbTiles(dst, true)
+            try {
+                out.setMeta("name", name); out.setMeta("format", "png"); out.setMeta("bounds", "${b.west},${b.south},${b.east},${b.north}")
+                val px = IntArray(256 * 256); var done = 0
+                for (z in zMax downTo zMin) {
+                    val r = TileMath.range(b, z)
+                    for (x in r[0]..r[2]) for (y in r[1]..r[3]) {
+                        if (tif.tile(z, x, y, px)) out.put(z, x, y, png(Bitmap.createBitmap(px, 256, 256, Bitmap.Config.ARGB_8888), px.any { it ushr 24 != 255 }))
+                        onProgress(++done / total)
+                    }
+                }
+                require(out.maxZoom >= 0) { "image does not cover any map tile" }
+            } catch (e: Exception) { out.close(); dst.delete(); throw e }
+            out.close()
         }
     }
 
@@ -175,7 +245,7 @@ class MapHub(private val ctx: Context) {
         return if (z >= 0) z else if (canFetch("dem")) 12 else null
     }
 
-    fun style(base: String?, hillshade: Boolean, night: Boolean): String {
+    fun style(base: String?, hillshade: Boolean, night: Boolean, slope: Boolean = false, contours: Boolean = false): String {
         val b = base?.let { id ->
             val stored = stores[id]?.maxZoom ?: -1
             val max = if (canFetch(id)) 17 else stored
@@ -183,7 +253,7 @@ class MapHub(private val ctx: Context) {
         }
         val overlays = packs.value.filter { it.visible && !it.dem }
             .map { StyleBuilder.Raster(it.id, it.minZoom, it.maxZoom, it.opacity, it.bounds) }
-        return StyleBuilder.build(b, overlays, demMaxZoom(), hillshade, night, version.get())
+        return StyleBuilder.build(b, overlays, demMaxZoom(), hillshade, night, version.get(), slope, contours)
     }
 
     fun storedBytes(id: String) = stores[id]?.file?.length() ?: 0L

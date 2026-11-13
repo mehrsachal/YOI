@@ -158,4 +158,18 @@ class MissionsTest {
         assertFailsWith<IllegalArgumentException> { Formats.import("a.shp", ByteArray(50), ctx) }
         assertFailsWith<IllegalArgumentException> { Formats.import("a.docx", ByteArray(5), ctx) }
     }
+
+    @Test fun certificateRequestIsWellFormedAndSelfSigned() {
+        val keys = java.security.KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
+        val csr = Csr.build(keys, listOf("CN" to "alpha 1", "O" to "Unit", "OU" to "Signals"))
+        java.io.File("build/test.csr").apply { parentFile.mkdirs() }.writeBytes(csr)
+        // Outer SEQUENCE -> first element is the signed CertificationRequestInfo; the trailing BIT STRING is the signature.
+        assertEquals(0x30, csr[0].toInt()); assertEquals(0x82, csr[1].toInt() and 0xFF)
+        assertEquals(csr.size - 4, ((csr[2].toInt() and 0xFF) shl 8) or (csr[3].toInt() and 0xFF))
+        val infoLen = 4 + (((csr[6].toInt() and 0xFF) shl 8) or (csr[7].toInt() and 0xFF))
+        val info = csr.copyOfRange(4, 4 + infoLen)
+        val sig = csr.copyOfRange(csr.size - 256, csr.size)
+        assertTrue(java.security.Signature.getInstance("SHA256withRSA").run { initVerify(keys.public); update(info); verify(sig) })
+        assertTrue(String(csr, Charsets.ISO_8859_1).contains("alpha 1"))
+    }
 }

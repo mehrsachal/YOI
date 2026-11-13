@@ -11,7 +11,7 @@ import java.nio.ByteBuffer
  * it still fits a single Meshtastic payload (limit 200 bytes).
  */
 object Compact {
-    const val MAX = 170
+    const val MAX = 170 // + 29 bytes of mesh encryption overhead = 199
     const val MAX_TEXT = 100
 
     fun hash(uid: String): Int = uid.fold(0x811C9DC5.toInt()) { h, c -> (h xor c.code) * 16777619 }

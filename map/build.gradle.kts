@@ -5,6 +5,9 @@ android {
     defaultConfig { minSdk = 28 }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
+    testOptions { unitTests { isIncludeAndroidResources = true; all { t ->
+        providers.gradleProperty("robolectricRepo").orNull?.let { t.systemProperty("robolectric.dependency.repo.url", it) }
+    } } }
 }
 dependencies {
     api(project(":coords"))
@@ -14,4 +17,6 @@ dependencies {
     api("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     testImplementation(kotlin("test"))
     testImplementation("org.json:json:20240303")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }

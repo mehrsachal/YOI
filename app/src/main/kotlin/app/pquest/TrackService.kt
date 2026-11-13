@@ -16,47 +16,51 @@ import android.os.IBinder
 import app.pquest.coords.Dtg
 import kotlinx.coroutines.flow.MutableStateFlow
 
-/** Foreground service that records a GPS fix every 10 s into the encrypted database, screen on or off. */
+/**
+ * Foreground location service. Keeps a GPS fix every 10 s with the screen off, for two purposes:
+ * recording a track into the encrypted database, and feeding position reports to the CoT engine.
+ */
 class TrackService : Service(), LocationListener {
     companion object {
         const val INTERVAL_MS = 10_000L
         val recording = MutableStateFlow<Long?>(null)
-        fun start(ctx: Context) = ctx.startForegroundService(Intent(ctx, TrackService::class.java))
-        fun stop(ctx: Context) = ctx.stopService(Intent(ctx, TrackService::class.java))
+        val fix = MutableStateFlow<Location?>(null)
+        @Volatile private var wantRecord = false
+        @Volatile private var wantPli = false
+
+        fun record(ctx: Context, on: Boolean) { wantRecord = on; apply(ctx) }
+        fun reportPosition(ctx: Context, on: Boolean) { if (wantPli != on) { wantPli = on; apply(ctx) } }
+        private fun apply(ctx: Context) = runCatching { ctx.startForegroundService(Intent(ctx, TrackService::class.java)) }
     }
 
-    private val prefs by lazy { getSharedPreferences("track", MODE_PRIVATE) }
+    private var listening = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (recording.value != null) return START_STICKY
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(NotificationChannel("track", getString(R.string.track), NotificationManager.IMPORTANCE_LOW))
         val n = Notification.Builder(this, "track").setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle(getString(R.string.recording)).setOngoing(true).build()
+            .setContentTitle(getString(if (wantRecord) R.string.recording else R.string.reporting_position)).setOngoing(true).build()
         try {
             if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION) else startForeground(1, n)
-            getSystemService(LocationManager::class.java).requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL_MS, 0f, this)
+            if (!listening) { getSystemService(LocationManager::class.java).requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL_MS, 0f, this); listening = true }
         } catch (e: Exception) { // permission missing or GPS absent
-            stopSelf()
-            return START_NOT_STICKY
+            wantRecord = false; wantPli = false
         }
-        // Resume the same track if the system restarted the service.
-        val app = application as App
-        var id = prefs.getLong("id", -1)
-        if (id < 0) {
+        val session = (application as App).session
+        if (wantRecord && recording.value == null && session != null) {
             val now = System.currentTimeMillis()
-            id = app.tracks.start(Dtg.format(now), now)
-            prefs.edit().putLong("id", id).apply()
-        }
-        recording.value = id
-        return START_STICKY
+            recording.value = session.tracks.start(Dtg.format(now, (application as App).settings.zulu), now)
+        } else if (!wantRecord) recording.value = null
+        if (!wantRecord && !wantPli) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
+        return START_NOT_STICKY
     }
 
     override fun onLocationChanged(l: Location) {
+        fix.value = l
         val id = recording.value ?: return
-        (application as App).tracks.add(id, l.time, l.latitude, l.longitude, if (l.hasAltitude()) l.altitude else null, if (l.hasAccuracy()) l.accuracy else null)
+        (application as App).session?.tracks?.add(id, l.time, l.latitude, l.longitude, if (l.hasAltitude()) l.altitude else null, if (l.hasAccuracy()) l.accuracy else null)
     }
 
     @Deprecated("Required below API 29") override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -65,8 +69,7 @@ class TrackService : Service(), LocationListener {
 
     override fun onDestroy() {
         runCatching { getSystemService(LocationManager::class.java).removeUpdates(this) }
-        prefs.edit().remove("id").apply()
-        recording.value = null
+        listening = false; recording.value = null
         super.onDestroy()
     }
 }

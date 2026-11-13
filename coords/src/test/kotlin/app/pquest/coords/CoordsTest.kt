@@ -74,4 +74,28 @@ class CoordsTest {
         assertEquals("131045E NOV 26", Dtg.format(t))
         assertEquals("130545Z NOV 26", Dtg.format(t, zulu = true))
     }
+
+    @Test fun lineOfSight() {
+        val flat = (0..10).map { it * 200.0 to 100.0 }
+        assertTrue(Los.check(flat).visible)
+        val ridge = flat.toMutableList().also { it[5] = 1000.0 to 140.0 }
+        val r = Los.check(ridge)
+        assertFalse(r.visible); assertEquals(1000.0, r.blockedAt); assertTrue(r.clearance < -35)
+        assertTrue(Los.check(ridge, observerHeight = 60.0, targetHeight = 60.0).visible)
+        // Over 40 km of flat sea the earth's curve hides a 1.7 m target from a 1.7 m observer.
+        assertFalse(Los.check((0..40).map { it * 1000.0 to 0.0 }).visible)
+    }
+
+    @Test fun northReferencesAndOffRoute() {
+        assertEquals(0.0, North.convergence(LatLon(34.0, 75.0)), 1e-9)          // on the central meridian of zone 43
+        assertEquals(1.118, North.convergence(LatLon(34.0, 77.0)), 0.002)       // atan(tan 2 deg * sin 34 deg)
+        assertTrue(North.convergence(LatLon(34.0, 73.0)) < 0)
+        assertEquals(359.0, North.fromTrue(1.0, "MAG", LatLon(34.0, 75.0), 2.0), 1e-9)
+        assertEquals(88.882, North.fromTrue(90.0, "GRID", LatLon(34.0, 77.0), 2.0), 0.002)
+        assertEquals(270.0, North.back(90.0)); assertEquals(1600, North.mils(90.0)); assertEquals(0, North.mils(360.0))
+        val path = listOf(LatLon(20.0, 64.0), LatLon(20.0, 64.1))
+        assertEquals(111.3, North.offRoute(LatLon(20.001, 64.05), path), 1.0)
+        assertEquals(0.0, North.offRoute(LatLon(20.0, 64.02), path), 0.5)
+        assertEquals(Geodesy.distance(LatLon(20.0, 64.2), path[1]), North.offRoute(LatLon(20.0, 64.2), path), 30.0)
+    }
 }

@@ -8,7 +8,7 @@ object StyleBuilder {
 
     private fun tiles(id: String, v: Int) = "\"tiles\":[\"https://$HOST/$id/{z}/{x}/{y}?v=$v\"],\"tileSize\":256"
 
-    fun build(base: Raster?, overlays: List<Raster>, demMaxZoom: Int?, hillshade: Boolean, night: Boolean, version: Int): String {
+    fun build(base: Raster?, overlays: List<Raster>, demMaxZoom: Int?, hillshade: Boolean, night: Boolean, version: Int, slope: Boolean = false, contours: Boolean = false): String {
         val src = ArrayList<String>()
         val lay = ArrayList<String>()
         val dim = if (night) ",\"raster-brightness-max\":0.45,\"raster-saturation\":-0.5" else ""
@@ -22,10 +22,18 @@ object StyleBuilder {
             src += "\"dem\":{\"type\":\"raster-dem\",${tiles("dem", version)},\"encoding\":\"terrarium\",\"maxzoom\":$demMaxZoom}"
             lay += "{\"id\":\"hillshade\",\"type\":\"hillshade\",\"source\":\"dem\",\"paint\":{\"hillshade-exaggeration\":0.45,\"hillshade-shadow-color\":\"#2b2118\"}}"
         }
-        for (g in listOf("track", "measure", "marks")) src += "\"$g\":{\"type\":\"geojson\",\"data\":{\"type\":\"FeatureCollection\",\"features\":[]}}"
+        if (demMaxZoom != null) for ((id, on) in listOf("slope" to slope, "contour" to contours)) if (on) {
+            src += "\"$id\":{\"type\":\"raster\",${tiles(id, version)},\"maxzoom\":$demMaxZoom}"
+            lay += "{\"id\":\"$id\",\"type\":\"raster\",\"source\":\"$id\",\"paint\":{\"raster-fade-duration\":0,\"raster-resampling\":\"nearest\"}}"
+        }
+        for (g in listOf("track", "measure", "marks", "gfx", "labels", "items", "contacts")) src += "\"$g\":{\"type\":\"geojson\",\"data\":{\"type\":\"FeatureCollection\",\"features\":[]}}"
         lay += "{\"id\":\"track\",\"type\":\"line\",\"source\":\"track\",\"layout\":{\"line-cap\":\"round\",\"line-join\":\"round\"},\"paint\":{\"line-color\":\"#d4007a\",\"line-width\":4}}"
         lay += "{\"id\":\"measure\",\"type\":\"line\",\"source\":\"measure\",\"layout\":{\"line-cap\":\"round\",\"line-join\":\"round\"},\"paint\":{\"line-color\":\"#0044ff\",\"line-width\":4}}"
         lay += "{\"id\":\"measure_pts\",\"type\":\"circle\",\"source\":\"measure\",\"paint\":{\"circle-radius\":7,\"circle-color\":\"#ffffff\",\"circle-stroke-color\":\"#0044ff\",\"circle-stroke-width\":3}}"
+        // Tactical graphics come from the symbol renderer as lines, fills and label points; point symbols are images.
+        lay += "{\"id\":\"gfx_fill\",\"type\":\"fill\",\"source\":\"gfx\",\"filter\":[\"all\",[\"==\",[\"geometry-type\"],\"Polygon\"],[\"has\",\"fillColor\"]],\"paint\":{\"fill-color\":[\"get\",\"fillColor\"],\"fill-opacity\":[\"coalesce\",[\"get\",\"fillOpacity\"],0.15]}}"
+        lay += "{\"id\":\"gfx_line\",\"type\":\"line\",\"source\":\"gfx\",\"filter\":[\"has\",\"strokeColor\"],\"layout\":{\"line-cap\":\"round\",\"line-join\":\"round\"},\"paint\":{\"line-color\":[\"get\",\"strokeColor\"],\"line-width\":[\"coalesce\",[\"get\",\"strokeWidth\"],3]}}"
+        for (id in listOf("labels", "items", "contacts")) lay += "{\"id\":\"$id\",\"type\":\"symbol\",\"source\":\"$id\",\"layout\":{\"icon-image\":[\"get\",\"i\"],\"icon-allow-overlap\":true,\"icon-ignore-placement\":true,\"icon-rotate\":[\"coalesce\",[\"get\",\"angle\"],0],\"icon-rotation-alignment\":\"map\"}}"
         lay += "{\"id\":\"marks\",\"type\":\"circle\",\"source\":\"marks\",\"paint\":{\"circle-radius\":9,\"circle-color\":[\"get\",\"c\"],\"circle-stroke-color\":\"#ffffff\",\"circle-stroke-width\":3}}"
         return "{\"version\":8,\"sources\":{${src.joinToString(",")}},\"layers\":[${lay.joinToString(",")}]}"
     }

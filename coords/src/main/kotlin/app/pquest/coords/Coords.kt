@@ -201,6 +201,60 @@ object Geodesy {
     }
 }
 
+/** Line of sight over terrain, allowing for earth curvature with standard refraction (effective radius 4/3). */
+object Los {
+    class Result(val visible: Boolean, val blockedAt: Double?, val clearance: Double)
+
+    /**
+     * [profile] is (distance from observer, ground elevation) from observer to target, in order.
+     * Heights are metres above ground at each end. [clearance] is the smallest gap between the sight line and the ground.
+     */
+    fun check(profile: List<Pair<Double, Double>>, observerHeight: Double = 1.7, targetHeight: Double = 1.7): Result {
+        if (profile.size < 2) return Result(true, null, 0.0)
+        val total = profile.last().first
+        val a = profile.first().second + observerHeight; val b = profile.last().second + targetHeight
+        var min = Double.MAX_VALUE; var at: Double? = null
+        for ((d, ground) in profile.subList(1, profile.size - 1)) {
+            val sight = a + (b - a) * d / total - d * (total - d) / (2 * 6371000.0 * 4 / 3)
+            val gap = sight - ground
+            if (gap < min) { min = gap; if (gap < 0 && at == null) at = d }
+        }
+        return Result(at == null, at, if (min == Double.MAX_VALUE) 0.0 else min)
+    }
+}
+
+object North {
+    /** Grid convergence in degrees: grid north minus true north at [p] in its UTM zone (east of the central meridian it is positive in the northern hemisphere). */
+    fun convergence(p: LatLon): Double {
+        val dl = Math.toRadians(p.lon - Utm.centralMeridian(Utm.zoneOf(p.lat, p.lon)))
+        return Math.toDegrees(atan(tan(dl) * sin(Math.toRadians(p.lat))))
+    }
+
+    /** Converts a true bearing to the chosen reference. [declination] is magnetic minus true (east positive). */
+    fun fromTrue(trueDeg: Double, ref: String, p: LatLon, declination: Double): Double = when (ref) {
+        "GRID" -> trueDeg - convergence(p)
+        "MAG" -> trueDeg - declination
+        else -> trueDeg
+    }.let { ((it % 360) + 360) % 360 }
+
+    fun back(deg: Double) = (deg + 180) % 360
+    fun mils(deg: Double) = Math.round(deg * 6400 / 360) % 6400
+
+    /** Shortest distance in metres from [p] to the path, used for the off-route alert. */
+    fun offRoute(p: LatLon, path: List<LatLon>): Double {
+        if (path.isEmpty()) return 0.0
+        if (path.size == 1) return Geodesy.distance(p, path[0])
+        val k = cos(Math.toRadians(p.lat)) * 111320.0
+        fun xy(q: LatLon) = Pair((q.lon - p.lon) * k, (q.lat - p.lat) * 111320.0)
+        return path.zipWithNext().minOf { (a, b) ->
+            val (ax, ay) = xy(a); val (bx, by) = xy(b)
+            val len2 = (bx - ax).pow(2) + (by - ay).pow(2)
+            val t = if (len2 == 0.0) 0.0 else (-(ax * (bx - ax) + ay * (by - ay)) / len2).coerceIn(0.0, 1.0)
+            hypot(ax + t * (bx - ax), ay + t * (by - ay))
+        }
+    }
+}
+
 enum class CoordFormat { MGRS, UTM, DD, DMS }
 
 object CoordText {

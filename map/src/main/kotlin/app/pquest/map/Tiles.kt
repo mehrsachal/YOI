@@ -75,6 +75,8 @@ class MbTiles(val file: File, private val writable: Boolean) : TileSource {
     fun put(z: Int, x: Int, y: Int, data: ByteArray) =
         db.execSQL("INSERT OR REPLACE INTO tiles VALUES (?,?,?,?)", arrayOf<Any>(z, x, row(z, y), data))
 
+    fun setMeta(key: String, value: String) = db.execSQL("INSERT OR REPLACE INTO metadata VALUES (?, ?)", arrayOf<Any>(key, value))
+
     private fun zoom(fn: String): Int =
         db.rawQuery("SELECT $fn(zoom_level) FROM tiles", null).use { if (it.moveToFirst() && !it.isNull(0)) it.getInt(0) else -1 }
 
