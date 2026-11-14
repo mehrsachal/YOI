@@ -1,0 +1,5 @@
+out/
+certs/
+ca/
+data/
+.env

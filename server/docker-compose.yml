@@ -1,0 +1,24 @@
+# FreeTAKServer for a unit laptop or Raspberry Pi 5 (arm64). No internet is needed once the image is on the machine.
+#   1. cp .env.example .env   and set SERVER_IP to this machine's address on the unit network
+#   2. docker compose up -d
+#   3. ./issue_client.sh ALPHA-1      (one per device; produces a connection package and a QR code)
+services:
+  fts:
+    image: ghcr.io/freetakteam/freetakserver:latest
+    restart: unless-stopped
+    environment:
+      FTS_IP: ${SERVER_IP}
+      FTS_DP_ADDRESS: ${SERVER_IP}
+      FTS_USER_ADDRESS: ${SERVER_IP}
+      FTS_API_ADDRESS: ${SERVER_IP}
+      FTS_SSLCOT_PORT: "8089"
+      FTS_COT_PORT: "8087"
+      FTS_API_PORT: "19023"
+      FTS_FED_PORT: "9000"
+    ports:
+      - "8089:8089"     # CoT over TLS: the only port P-Quest devices need
+      - "8443:8443"     # data package / Mission API over TLS
+      - "127.0.0.1:19023:19023"   # admin API, reachable from this machine only
+    volumes:
+      - ./data:/opt/fts
+      - ./certs:/opt/fts/certs

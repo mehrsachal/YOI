@@ -11,10 +11,28 @@ android {
         resourceConfigurations += listOf("en", "ur")
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
+    // Release signing comes from Gradle properties (never committed): pquestKeystore, pquestKeystorePassword, pquestKeyAlias, pquestKeyPassword.
+    val keystore = providers.gradleProperty("pquestKeystore").orNull
+    signingConfigs {
+        if (keystore != null) create("release") {
+            storeFile = file(keystore); storePassword = providers.gradleProperty("pquestKeystorePassword").get()
+            keyAlias = providers.gradleProperty("pquestKeyAlias").get(); keyPassword = providers.gradleProperty("pquestKeyPassword").get()
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+        }
+    }
     buildFeatures { compose = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        jniLibs.useLegacyPackaging = true // compress native libraries: keeps the APK well under the 60 MB limit
+    }
     testOptions { unitTests { isIncludeAndroidResources = true; all { t ->
         providers.gradleProperty("robolectricRepo").orNull?.let { t.systemProperty("robolectric.dependency.repo.url", it) }
     } } }

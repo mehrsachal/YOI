@@ -105,7 +105,7 @@ class Ui {
     var activeMission by mutableStateOf("")
     var follow by mutableStateOf<String?>(null)
     var followIndex by mutableIntStateOf(0)
-    var room by mutableStateOf<Triple<RoomKind, String, String>?>(null)
+    var room by mutableStateOf<Triple<RoomKind, String, String>?>(ALL_ROOM)
     var shownTrack by mutableStateOf<Long?>(null)
     var boxCorner by mutableStateOf<LatLon?>(null)
     var box by mutableStateOf<BBox?>(null)
@@ -171,7 +171,8 @@ fun MapScreen(app: App, activity: ComponentActivity, session: Session) {
     val contacts by session.engine.contacts.collectAsState()
     val alerts by session.engine.alerts.collectAsState()
     val serviceFix by TrackService.fix.collectAsState()
-    val demo = !s.tourDone || ui.tour.replay
+    // Demo mode lasts only while the tour is on screen: "remind me later" returns to normal operation.
+    val demo = (!s.tourDone && !ui.tour.hidden) || ui.tour.replay
 
     LaunchedEffect(demo) { session.engine.demo = demo }
     LaunchedEffect(serviceFix) { serviceFix?.let { ui.fix = LatLon(it.latitude, it.longitude) } }

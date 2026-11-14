@@ -75,6 +75,7 @@ object Symbols {
      * Renders a point symbol, with its unit name and echelon, centred in the returned bitmap so that the bitmap
      * centre sits on the map position. Returns null if the code cannot be drawn.
      */
+    @Synchronized
     fun icon(sidc: String, name: String, sizePx: Int): Bitmap? = runCatching {
         if (!ready || !Sidc.isStandard(sidc)) return null
         val mods = HashMap<String, String>()
@@ -122,6 +123,7 @@ object Symbols {
      * Draws a multi-point tactical graphic (phase line, boundary, axis of advance, objective ...) to GeoJSON for the
      * visible area. Returns null when the renderer cannot draw it, in which case the caller draws a plain line or area.
      */
+    @Synchronized
     fun graphic(uid: String, sidc: String, name: String, pts: List<LatLon>, west: Double, south: Double, east: Double, north: Double, scale: Double, lineColor: String? = null): String? =
         runCatching {
             if (!ready || !Sidc.isStandard(sidc) || pts.size < 2) return null
@@ -135,6 +137,7 @@ object Symbols {
         }.getOrNull()
 
     /** Searches the full 2525D symbol set by name. */
+    @Synchronized
     fun search(query: String, affiliation: Char = '3', limit: Int = 60): List<Entry> = runCatching {
         if (!ready) return emptyList()
         val q = query.trim().lowercase()

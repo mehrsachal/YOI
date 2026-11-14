@@ -43,7 +43,15 @@ class TakTls(cfg: ServerConfig) {
     init {
         val ca = KeyStore.getInstance("PKCS12").apply { load(ByteArrayInputStream(cfg.caP12), cfg.caPass.toCharArray()) }
         val client = KeyStore.getInstance("PKCS12").apply { load(ByteArrayInputStream(cfg.clientP12), cfg.clientPass.toCharArray()) }
-        val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(ca) }
+        // Trust anchors: every certificate in the truststore, plus the root of our own certificate's chain.
+        // (Some tools write certificate-only PKCS#12 files that not every platform lists as trusted entries.)
+        val anchors = KeyStore.getInstance(KeyStore.getDefaultType()).apply { load(null, null) }
+        var n = 0
+        for (alias in ca.aliases()) ca.getCertificate(alias)?.let { anchors.setCertificateEntry("ca${n++}", it) }
+        for (alias in client.aliases()) client.getCertificateChain(alias)?.filterIsInstance<X509Certificate>()
+            ?.filter { it.subjectX500Principal == it.issuerX500Principal && it.basicConstraints >= 0 }?.forEach { anchors.setCertificateEntry("ca${n++}", it) }
+        require(n > 0) { "connection package has no CA certificate" }
+        val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(anchors) }
         val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(client, cfg.clientPass.toCharArray()) }
         trust = tmf.trustManagers.first { it is X509TrustManager } as X509TrustManager
         context = SSLContext.getInstance("TLS").apply { init(kmf.keyManagers, arrayOf(trust), null) }
@@ -63,6 +71,8 @@ class TakLink(private val cfg: ServerConfig, private val onXml: (String) -> Unit
     @Volatile private var out: OutputStream? = null
     @Volatile private var socket: SSLSocket? = null
     @Volatile private var running = true
+    /** Why the last connection attempt failed, for the server status line. */
+    @Volatile var lastError: String? = null
 
     private val thread = Thread({
         var wait = 2000L
@@ -81,7 +91,7 @@ class TakLink(private val cfg: ServerConfig, private val onXml: (String) -> Unit
                     buf.append(String(chunk, 0, n, Charsets.UTF_8))
                     Cot.split(buf, onXml)
                 }
-            } catch (e: Exception) { /* fall through to reconnect */ }
+            } catch (e: Exception) { lastError = e.message ?: e.javaClass.simpleName }
             out = null; runCatching { socket?.close() }
             if (running) { onUp(false); runCatching { Thread.sleep(wait) }; wait = minOf(wait * 2, 60_000) }
         }
@@ -211,7 +221,7 @@ object Enrolment {
         val mine = cert(signed.getString("signedCert"))
         val cas = signed.keys().asSequence().filter { it.startsWith("ca") }.sorted().map { cert(signed.getString(it)) }.toList()
         require(cas.any { sha256(it.encoded) == e.caSha256 }) { "CA does not match the QR code" }
-        val pass = Base64.getUrlEncoder().withoutPadding().encodeToString(java.security.SecureRandom().generateSeed(18))
+        val pass = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(18).also { java.security.SecureRandom().nextBytes(it) })
         fun p12(fill: KeyStore.() -> Unit) = ByteArrayOutputStream().also { o -> KeyStore.getInstance("PKCS12").apply { load(null, null); fill(); store(o, pass.toCharArray()) } }.toByteArray()
         return ServerConfig(
             e.host, e.port, p12 { cas.forEachIndexed { i, c -> setCertificateEntry("ca$i", c) } }, pass,

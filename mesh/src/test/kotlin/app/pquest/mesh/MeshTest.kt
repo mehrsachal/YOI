@@ -52,4 +52,24 @@ class MeshTest {
         assertFalse(MeshCrypto.seal(k2, msg).contentEquals(MeshCrypto.seal(k2, msg)), "nonce must differ per packet")
         assertNull(MeshCrypto.open(listOf(k1), ByteArray(5)))
     }
+
+    /** Frames produced by the official Meshtastic protobuf definitions (python package "meshtastic"). */
+    private val official = javaClass.getResource("/official_frames.txt")!!.readText().trim().lines().associate { l ->
+        l.substringBefore('=') to l.substringAfter('=').chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    }
+
+    @Test fun ourOutgoingFramesAreByteIdenticalToTheOfficialEncoding() {
+        assertContentEquals(official.getValue("to_packet"), Meshtastic.send(ByteArray(10) { it.toByte() }, 77))
+        assertContentEquals(official.getValue("to_wantconfig"), Meshtastic.wantConfig(9))
+    }
+
+    @Test fun weReadFramesFromTheOfficialEncoding() {
+        val p = Meshtastic.parse(official.getValue("from_packet")) as FromRadio.Packet
+        assertEquals(0x11223344L, p.from); assertEquals(Meshtastic.BROADCAST, p.to); assertEquals(Meshtastic.PORT_PRIVATE, p.port)
+        assertContentEquals(byteArrayOf(9, 8), p.payload); assertEquals(2, p.hops)
+        assertEquals(MeshNode(42, "Section radio 2", 1_700_000_000_000, 1, 6.5f), (Meshtastic.parse(official.getValue("from_node")) as FromRadio.Node).node)
+        assertEquals(FromRadio.MyInfo(42), Meshtastic.parse(official.getValue("from_myinfo")))
+        assertEquals(FromRadio.ConfigComplete(9), Meshtastic.parse(official.getValue("from_complete")))
+        assertEquals(FromRadio.Other, Meshtastic.parse(official.getValue("from_encrypted")))
+    }
 }

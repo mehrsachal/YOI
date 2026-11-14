@@ -228,7 +228,7 @@ fun Stepper(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit)
 private fun DownloadSheet(app: App, ui: Ui) {
     var radius by remember { mutableIntStateOf(if (ui.box == null) 10 else 0) }
     var zMin by remember { mutableIntStateOf(8) }
-    var zMax by remember { mutableIntStateOf(15) }
+    var zMax by remember { mutableIntStateOf(if (app.hub.demoDownload) 14 else 15) }
     val centre = remember { ui.centre }
     val layers = MapHub.BUILT_IN.filter { app.hub.canFetch(it) }
     val box = if (radius > 0) TileMath.around(centre, radius * 1000.0) else ui.box ?: TileMath.around(centre, 10_000.0)
