@@ -2,6 +2,7 @@ package app.pquest
 
 import android.content.res.Configuration
 import android.os.Bundle
+import android.view.ContextThemeWrapper
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -61,11 +62,14 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(secure) { if (secure) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
             // Language switches instantly: strings and layout direction come from a locale-specific context.
             val lang = app.settings.lang
+            // The wrapper keeps the activity underneath, so anything that looks up the activity through the context
+            // (permission and file pickers, dialogs) still finds it.
             val localized = remember(lang) {
-                createConfigurationContext(Configuration(resources.configuration).apply { setLocale(Locale(lang)) })
+                ContextThemeWrapper(this, 0).apply { applyOverrideConfiguration(Configuration().apply { setLocale(Locale(lang)) }) }
             }
             CompositionLocalProvider(
                 LocalContext provides localized,
+                androidx.activity.compose.LocalActivityResultRegistryOwner provides this,
                 LocalLayoutDirection provides if (lang == "ur") LayoutDirection.Rtl else LayoutDirection.Ltr,
             ) {
                 MaterialTheme(colorScheme = if (app.settings.night) Night else Day, typography = if (lang == "ur") urdu(Typography()) else Typography()) {

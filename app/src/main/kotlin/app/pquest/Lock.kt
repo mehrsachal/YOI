@@ -85,6 +85,14 @@ fun LockScreen(app: App, activity: ComponentActivity, onUnlocked: (Vault.Unlocke
                     }
                 }
             }
+            // If the app crashed, the report can be sent from here without unlocking (it contains no user data).
+            val crashes = remember { java.io.File(app.filesDir, "crash").listFiles()?.sortedByDescending { it.name }.orEmpty() }
+            if (crashes.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Big(stringResource(R.string.share_crash_report)) {
+                    shareFile(activity, "pquest-crash.txt", "text/plain", crashes.take(5).joinToString("\n\n=====\n\n") { it.readText() }.toByteArray())
+                }
+            }
             if (!creating && Vault.hasBiometric(app)) {
                 Spacer(Modifier.height(12.dp))
                 Big(stringResource(R.string.use_biometric)) { biometric(activity, Vault.biometricDecryptCipher(app)) { c -> Vault.openBiometric(app, c)?.let(onUnlocked) } }

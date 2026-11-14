@@ -289,4 +289,5 @@
     <string name="what_to_export">What to export</string>
     <string name="wipe_explain">Wipe destroys the keys and deletes all data in the app. It cannot be undone.</string>
     <string name="wipe_hold">WIPE APP — hold 3 s</string>
+    <string name="share_crash_report">Send crash report</string>
 </resources>

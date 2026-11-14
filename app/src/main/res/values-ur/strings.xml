@@ -288,4 +288,5 @@
     <string name="what_to_export">کیا برآمد کرنا ہے</string>
     <string name="wipe_explain">Wipe تمام keys تباہ کر کے ایپ کا سارا ڈیٹا مٹا دیتا ہے۔ یہ واپس نہیں ہو سکتا۔</string>
     <string name="wipe_hold">ایپ مٹائیں — 3 سیکنڈ دبائیں</string>
+    <string name="share_crash_report">کریش رپورٹ بھیجیں</string>
 </resources>
