@@ -21,8 +21,9 @@ import kotlin.math.min
  * Draws the MGRS grid over the map. The line spacing follows the zoom (100 km, 10 km, 1 km, 100 m) and labels
  * carry the digits that matter at that spacing (e.g. two digits on a 1 km grid).
  */
-fun DrawScope.drawMgrsGrid(map: MapLibreMap, night: Boolean) {
-    val w = size.width; val h = size.height
+fun DrawScope.drawMgrsGrid(map: MapLibreMap, night: Boolean) = drawMgrsGrid(drawContext.canvas.nativeCanvas, size.width, size.height, density, fontScale, map, night)
+
+fun drawMgrsGrid(canvas: android.graphics.Canvas, w: Float, h: Float, density: Float, fontScale: Float, map: MapLibreMap, night: Boolean) {
     val proj = map.projection
     fun ll(x: Float, y: Float) = proj.fromScreenLocation(PointF(x, y)).let { LatLon(it.latitude, it.longitude) }
     fun px(p: LatLon) = proj.toScreenLocation(LatLng(p.lat, p.lon))
@@ -43,7 +44,6 @@ fun DrawScope.drawMgrsGrid(map: MapLibreMap, night: Boolean) {
         textSize = 14 * density * fontScale; typeface = Typeface.DEFAULT_BOLD
     }
     val text = Paint(halo).apply { style = Paint.Style.FILL; color = ink }
-    val canvas = drawContext.canvas.nativeCanvas
     fun label(s: String, x: Float, y: Float) { canvas.drawText(s, x, y, halo); canvas.drawText(s, x, y, text) }
     val digits = when (interval) { 100 -> 3; 1000 -> 2; else -> 1 }
     fun num(v: Double) = "%0${digits}d".format(java.util.Locale.ROOT, Math.floorMod(Math.round(v), 100_000L) / interval)

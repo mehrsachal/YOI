@@ -86,6 +86,7 @@ class MissionsTest {
     @Test fun qrLinks() {
         val m = Mission("m-1", "OP DEMO & Co", "a+b/c==", Role.OWNER)
         assertEquals(m.copy(role = Role.EDITOR), Links.parseMission(Links.mission(m)))
+        assertEquals(Role.VIEWER, Links.parseMission(Links.mission(m, Role.VIEWER))!!.role)
         val e = Links.Enrol("tak.unit.example", 8089, 8446, "alpha 1", "p@ss&word", "ab".repeat(32))
         assertEquals(e, Links.parseEnrol(Links.enrol(e)))
         assertNull(Links.parseMission("https://example.com")); assertNull(Links.parseEnrol("pquest://enroll?h=x&u=a&t=b&ca=short"))

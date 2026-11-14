@@ -19,6 +19,11 @@ android {
 }
 dependencies {
     implementation(project(":map"))
+    implementation(project(":missions"))
+    implementation(project(":mesh"))
+    implementation(project(":symbology"))
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.core:core-ktx:1.15.0")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")

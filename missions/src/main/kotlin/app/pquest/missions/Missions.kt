@@ -112,9 +112,10 @@ object Links {
         return uri.substringAfter('?').split("&").mapNotNull { kv -> kv.split("=", limit = 2).takeIf { it.size == 2 }?.let { it[0] to DataPackage.dec(it[1]) } }.toMap()
     }
 
-    fun mission(m: Mission) = "pquest://mission?id=${m.id}&n=${DataPackage.enc(m.name)}&k=${DataPackage.enc(m.key)}"
+    /** [asRole] is the role the receiving device takes (editor or viewer). */
+    fun mission(m: Mission, asRole: Role = Role.EDITOR) = "pquest://mission?id=${m.id}&n=${DataPackage.enc(m.name)}&k=${DataPackage.enc(m.key)}&r=${asRole.name[0]}"
     fun parseMission(uri: String): Mission? = query(uri.trim(), "mission")?.let { q ->
-        Mission(q["id"] ?: return null, q["n"] ?: return null, q["k"] ?: return null, Role.EDITOR)
+        Mission(q["id"] ?: return null, q["n"] ?: return null, q["k"] ?: return null, if (q["r"] == "V") Role.VIEWER else Role.EDITOR)
     }
 
     fun enrol(e: Enrol) = "pquest://enroll?h=${DataPackage.enc(e.host)}&p=${e.port}&e=${e.enrolPort}&u=${DataPackage.enc(e.user)}&t=${DataPackage.enc(e.token)}&ca=${e.caSha256}"
