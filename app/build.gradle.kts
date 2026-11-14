@@ -7,7 +7,7 @@ android {
         minSdk = 28
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0-phase1"
+        versionName = "1.0.0"
         resourceConfigurations += listOf("en", "ur")
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
@@ -15,6 +15,9 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    testOptions { unitTests { isIncludeAndroidResources = true; all { t ->
+        providers.gradleProperty("robolectricRepo").orNull?.let { t.systemProperty("robolectric.dependency.repo.url", it) }
+    } } }
     dependenciesInfo { includeInApk = false; includeInBundle = false }
 }
 dependencies {
@@ -24,6 +27,8 @@ dependencies {
     implementation(project(":symbology"))
     implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.core:core-ktx:1.15.0")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")

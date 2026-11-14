@@ -113,6 +113,22 @@ class Marti(private val host: String, private val http: OkHttpClient, private va
     fun create(name: String, uid: String) = call("PUT", "missions/${enc(name)}?creatorUid=${enc(uid)}") != null
     fun subscribe(name: String, uid: String) = call("PUT", "missions/${enc(name)}/subscription?uid=${enc(uid)}") != null
 
+    /** Stores a file on the server and returns the URL other clients fetch it from, or null. */
+    fun upload(name: String, bytes: ByteArray, uid: String): String? = runCatching {
+        val req = Request.Builder().url("https://$host:$port/Marti/sync/upload?name=${enc(name)}&creatorUid=${enc(uid)}")
+            .post(bytes.toRequestBody("application/octet-stream".toMediaType())).build()
+        http.newCall(req).execute().use { r ->
+            val hash = if (r.isSuccessful) Regex("\"(?:Hash|hash|UID)\"\\s*:\\s*\"([^\"]+)\"").find(r.body?.string() ?: "")?.groupValues?.get(1) else null
+            hash?.let { "https://$host:$port/Marti/sync/content?hash=$it" }
+        }
+    }.getOrNull()
+
+    /** Fetches an attachment, but only from this server. */
+    fun download(url: String): ByteArray? = runCatching {
+        if (!url.startsWith("https://$host:$port/Marti/sync/content?hash=")) return null
+        http.newCall(Request.Builder().url(url).build()).execute().use { if (it.isSuccessful) it.body?.bytes() else null }
+    }.getOrNull()
+
     /** All CoT events currently filed under the mission. */
     fun events(name: String): List<String>? = call("GET", "missions/${enc(name)}/cot")?.let { xml ->
         ArrayList<String>().also { out -> Cot.split(StringBuilder(xml)) { e -> out.add(e) } }

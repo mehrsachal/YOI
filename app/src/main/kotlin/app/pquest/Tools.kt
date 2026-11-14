@@ -176,7 +176,7 @@ fun CompassSheet(app: App, ui: Ui) {
     if (m == null) Text(stringResource(R.string.no_compass))
     else {
         val trueDeg = (m + decl + 360) % 360
-        Text(bearingText(app, trueDeg, at), fontSize = 44.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, modifier = Modifier.align(Alignment.CenterHorizontally))
+        Text(bearingText(app, trueDeg, at), fontSize = 44.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
         Text(stringResource(R.string.back_azimuth, bearingText(app, North.back(trueDeg), at)), fontSize = 20.sp, fontWeight = FontWeight.Bold)
     }
     Choice(listOf("GRID" to stringResource(R.string.north_grid), "MAG" to stringResource(R.string.north_mag), "TRUE" to stringResource(R.string.north_true)), s.north) { s.north = it }

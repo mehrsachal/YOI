@@ -37,6 +37,8 @@ class Engine(private val ctx: Context, val repo: Repo, private val fix: () -> an
         private set
     /** Demo mode (the familiarisation tour): nothing leaves the device. */
     @Volatile var demo = false
+        set(v) { if (field != v) { field = v; if (started) { if (silent) closeLinks() else { openLinks(); scope.launch { flush() } } } } }
+    @Volatile private var started = false
     @Volatile var pliSeconds = 10
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -45,8 +47,8 @@ class Engine(private val ctx: Context, val repo: Repo, private val fix: () -> an
     private val silent get() = dark || demo
 
     fun start(goDark: Boolean) {
-        dark = goDark
-        if (!dark) openLinks()
+        dark = goDark; started = true
+        if (!silent) openLinks()
         scope.launch { while (true) { delay(pliSeconds.coerceIn(10, 60) * 1000L); if (!silent) sendPli() } }
         scope.launch { while (true) { delay(8000); flush() } }
     }
@@ -55,7 +57,7 @@ class Engine(private val ctx: Context, val repo: Repo, private val fix: () -> an
 
     fun setDark(on: Boolean) {
         dark = on
-        if (on) closeLinks() else { openLinks(); scope.launch { flush() } }
+        if (silent) closeLinks() else { openLinks(); scope.launch { flush() } }
     }
 
     private fun openLinks() {
@@ -66,7 +68,7 @@ class Engine(private val ctx: Context, val repo: Repo, private val fix: () -> an
 
     private fun closeLinks() {
         tak?.stop(); tak = null; serverUp.value = false
-        wifi.stop()
+        wifi.stop(); radio.disconnect()
     }
 
     fun connectServer() {
@@ -182,6 +184,10 @@ class Engine(private val ctx: Context, val repo: Repo, private val fix: () -> an
         }
         pushDirty()
     }
+
+    /** Attachments travel over the server only; they are never sent over mesh. Returns the link, or null if blocked. */
+    fun upload(name: String, bytes: ByteArray): String? = if (silent || !serverUp.value) null else marti()?.upload(name, bytes, self.uid)
+    fun download(url: String): ByteArray? = if (silent) null else marti()?.download(url)
 
     fun refreshServerMissions() = scope.launch { marti()?.missions()?.let { serverMissions.value = it } }
 

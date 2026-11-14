@@ -173,5 +173,13 @@ class Repo(private val db: SQLiteDatabase) {
     fun dequeue(n: Long) = db.execSQL("DELETE FROM outbox WHERE n = $n")
     fun queued(): Int = query("SELECT COUNT(*) FROM outbox") { it.getInt(0) }.first()
 
+    /** Removes what was created during a tour run, so demo data never mixes with real data. */
+    fun purgeDemo(since: Long, uid: String) {
+        db.execSQL("DELETE FROM items WHERE updated >= $since AND cot LIKE ?", arrayOf<Any?>("%author=\"$uid\"%"))
+        db.execSQL("DELETE FROM items WHERE mission = 'demo'"); db.execSQL("DELETE FROM missions WHERE id = 'demo'")
+        db.execSQL("DELETE FROM messages WHERE time >= $since AND mine = 1"); db.execSQL("DELETE FROM outbox")
+        bump()
+    }
+
     fun close() = runCatching { db.close() }
 }

@@ -33,8 +33,10 @@ class MapLogicTest {
     @Test fun styleIsValidAndOfflineOnly() {
         val json = StyleBuilder.build(
             StyleBuilder.Raster("topo", 0, 15), listOf(StyleBuilder.Raster("p1", 9, 14, 0.6f, BBox(19.0, 63.0, 21.0, 65.0))),
-            demMaxZoom = 13, hillshade = true, night = true, version = 7
+            demMaxZoom = 13, hillshade = true, night = true, version = 7, slope = true, contours = true
         )
+        java.io.File("build/style-sample.json").apply { parentFile.mkdirs() }.writeText(json)
+        for (id in listOf("gfx_fill", "gfx_line", "labels", "items", "contacts", "slope", "contour")) assertTrue(json.contains("\"id\":\"$id\""), id)
         val o = JSONObject(json)
         val src = o.getJSONObject("sources")
         assertEquals("terrarium", src.getJSONObject("dem").getString("encoding"))

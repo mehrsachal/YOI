@@ -80,6 +80,8 @@ class App : Application() {
     lateinit var hub: MapHub
     var session by mutableStateOf<Session?>(null)
         private set
+    /** True while the lock screen covers a still-open session (after five minutes in the background, or Lock now). */
+    var locked by mutableStateOf(false)
 
     override fun onCreate() {
         super.onCreate()

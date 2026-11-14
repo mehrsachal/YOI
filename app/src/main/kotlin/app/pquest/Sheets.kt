@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import app.pquest.coords.CoordFormat
 import app.pquest.coords.CoordText
 import app.pquest.coords.Geodesy
+import app.pquest.coords.Los
 import app.pquest.map.MapHub
 import app.pquest.map.TileMath
 import kotlinx.coroutines.Dispatchers
@@ -342,7 +343,7 @@ private fun ProfileSheet(app: App, ui: Ui) {
     val lo = data.minOf { it.second }; val hi = data.maxOf { it.second }
     val steps = data.zipWithNext { a, b -> b.second - a.second }
     Text(stringResource(R.string.profile_stats, lo.roundToInt(), hi.roundToInt(), steps.filter { it > 0 }.sum().roundToInt(), -steps.filter { it < 0 }.sum().roundToInt()))
-    val los = remember(data) { app.pquest.coords.Los.check(data) }
+    val los = remember(data) { Los.check(data) }
     Text(
         if (los.visible) stringResource(R.string.los_clear, los.clearance.roundToInt()) else stringResource(R.string.los_blocked, distanceText(los.blockedAt ?: 0.0)),
         fontWeight = FontWeight.Bold, fontSize = 17.sp, color = if (los.visible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
